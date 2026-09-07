@@ -34,6 +34,12 @@
   .topbar .brand{ display:flex; align-items:baseline; gap:14px; }
   .topbar .brand h1{ font-size:19px; letter-spacing:.04em; margin:0; font-weight:700; color:#1A1A1A; }
   .topbar .brand .sub{ font-size:12px; color:var(--muted); letter-spacing:.08em; }
+  .topbar .back-link{
+    font-size:12px; color:var(--navy); text-decoration:none; border:1px solid var(--line);
+    padding:5px 12px; border-radius:14px; background:#fff; letter-spacing:.03em;
+    transition:background .15s, border-color .15s;
+  }
+  .topbar .back-link:hover{ background:#F5F9F8; border-color:var(--accent-soft); }
   .badge{
     font-size:11px; letter-spacing:.12em; border:1px solid var(--accent); color:var(--accent);
     padding:3px 10px; border-radius:2px; text-transform:uppercase;
@@ -191,7 +197,10 @@
     <h1>道路情報検索</h1>
     <span class="sub">XPCViewer データ連携プロトタイプ</span>
   </div>
-  <span class="badge">Prototype / 検証用</span>
+  <div style="display:flex; align-items:center; gap:12px;">
+    <a class="back-link" href="https://01a07946-5f9f-f075-a23c-691b85e64a61.share.connect.posit.cloud/">← 全体マップに戻る</a>
+    <span class="badge">Prototype / 検証用</span>
+  </div>
 </div>
 
 <div class="layout">
