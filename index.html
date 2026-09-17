@@ -175,11 +175,15 @@
   .pin.click-pin .dot{ background:var(--amber); }
   .pin.click-pin .label{ background:var(--amber); }
   .pin.bridge-pin{ transform:translate(-50%,-50%); }
-  .pin.bridge-pin .dot{
-    width:70px; height:70px; margin:0; border:none; box-shadow:none; border-radius:50%;
-    background:radial-gradient(circle, rgba(217,105,143,.45) 0%, rgba(217,105,143,.22) 45%, rgba(217,105,143,0) 75%);
+  .pin.bridge-pin .dot{ display:none; }
+  .pin.bridge-pin .label{
+    position:static; transform:none; white-space:nowrap; display:block;
+    background:rgba(91,140,79,.22); color:var(--ink); border:1.5px solid var(--accent);
+    font-size:11.5px; font-weight:700; padding:5px 10px; border-radius:7px;
+    letter-spacing:.02em; box-shadow:none;
   }
-  .pin.bridge-pin .label{ top:-46px; background:#d9698f; }
+  .bridge-item{ transition:background .3s ease, box-shadow .3s ease; }
+  .bridge-item.flash{ background:var(--accent-soft); box-shadow:0 0 0 2px var(--accent) inset; }
   .map-note{ margin-top:10px; font-size:11px; color:var(--muted); line-height:1.7; display:flex; gap:8px; align-items:flex-start; }
   .map-note .flag{ color:var(--accent); font-weight:700; flex:none; }
   .legend{ display:flex; gap:16px; font-size:10.5px; color:var(--muted); margin-top:8px; flex-wrap:wrap; }
@@ -242,12 +246,12 @@
         <dd class="mono">4,503.02 m（実延長 4,322.40 m）</dd>
         <dt>橋梁（2）</dt>
         <dd>
-          <div class="bridge-item">
+          <div class="bridge-item" id="bridgeItem0">
             <div class="bname">堰堤橋　<span style="color:var(--muted);font-weight:400;">（西ノ川）</span></div>
             <div class="bsp">SP 451.00　橋長 6.40m　昭和61年建設</div>
             <div class="bpage" onclick="goToPage(0)">図面1/4号で見る →</div>
           </div>
-          <div class="bridge-item">
+          <div class="bridge-item" id="bridgeItem1">
             <div class="bname">安孫子橋　<span style="color:var(--muted);font-weight:400;">（田下川）</span></div>
             <div class="bsp">SP 1,417.00　橋長 4.44m　昭和58年建設</div>
             <div class="bpage" onclick="goToPage(1)">図面2/4号で見る →</div>
@@ -395,11 +399,20 @@ function renderPage(){
 
   // bridge pin
   const pinBridge = document.getElementById('pinBridge');
+  document.querySelectorAll('.bridge-item').forEach(function(el){ el.classList.remove('flash'); });
   if(p.bridge){
     pinBridge.style.display = 'block';
     pinBridge.style.left = p.bridge_x_pct + '%';
     pinBridge.style.top = p.bridge_y_pct + '%';
     document.getElementById('pinBridgeLabel').textContent = p.bridge.name + ' ' + p.bridge.sp;
+    const targetId = 'bridgeItem' + currentPage;
+    pinBridge.dataset.bridgeTarget = targetId;
+    const resultPanel = document.getElementById('result');
+    if(resultPanel && !resultPanel.classList.contains('show')){
+      fillAndSearch();
+    }
+    const target = document.getElementById(targetId);
+    if(target){ target.classList.add('flash'); }
   } else {
     pinBridge.style.display = 'none';
   }
