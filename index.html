@@ -232,6 +232,25 @@
     .layout{ grid-template-columns:1fr; }
     .sidebar{ border-right:none; border-bottom:1px solid var(--line); }
   }
+
+  /* 台帳どうしの接続：ページ送りの矢印（水色）とは別の、橙色の矢印円 */
+  .rlink{ position:absolute; width:30px; height:30px; margin:-15px 0 0 -15px; border-radius:50%;
+    background:#E8892B; border:2.5px solid #fff; box-shadow:0 1px 6px rgba(0,0,0,.45); color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:17px; font-weight:800; line-height:1;
+    cursor:pointer; z-index:6; user-select:none; }
+  .rlink:hover{ transform:scale(1.18); z-index:9; }
+  .rlink .rl-tip{ position:absolute; bottom:36px; left:50%; transform:translateX(-50%); white-space:nowrap;
+    background:var(--navy); color:#fff; font-size:13px; font-weight:700; padding:6px 12px; border-radius:6px;
+    box-shadow:0 2px 6px rgba(0,0,0,.3); opacity:0; pointer-events:none; }
+  .rlink:hover .rl-tip{ opacity:1; }
+  .rlink.off{ background:#A6AFAD; cursor:default; }
+  .rlink.off:hover{ transform:none; }
+  .rlink.off .rl-tip{ background:#6F7B78; }
+  .rlink.pulse{ animation:rlPulse 1s ease-out 4; }
+  @keyframes rlPulse{ 0%{ box-shadow:0 0 0 0 rgba(232,137,43,.8);} 100%{ box-shadow:0 0 0 22px rgba(232,137,43,0);} }
+  #backChip{ display:none; margin:6px 0 0; }
+  #backChip button{ background:#FFF3E3; border:1px solid #E8892B; color:#9A5412; border-radius:14px; padding:4px 12px;
+    font-size:12.5px; font-weight:700; cursor:pointer; }
 </style>
 </head>
 <body>
@@ -314,6 +333,7 @@
     <div class="map-frame">
       <div class="cap">
         <div class="t" id="capTitle">町道　田下通（6号）　道路台帳平面図　1/4号</div>
+        <div id="backChip"><button type="button" onclick="goBackRoute()"></button></div>
         <div class="s">1:1,000　ニセコ町役場</div>
       </div>
 
@@ -464,7 +484,64 @@ function loadRoute(name, cb){
   document.head.appendChild(s);
 }
 
+let navStack = [];
+window.__jumping = false;
+window.__forcePage = null;
+function arrivalPage(name, from){
+  // 行き先の路線の中で、元の路線へ戻る接続が書かれているページを探して、そこから開く
+  const pages = EXTRA_ROUTES[name].pages || [];
+  for(let i = 0; i < pages.length; i++){
+    if((pages[i].links || []).some(function(l){ return l.to === from; })) return i;
+  }
+  return 0;
+}
+function openRoute(name, page){
+  window.__jumping = true; window.__forcePage = page;
+  document.getElementById('q').value = name;
+  doSearch();
+  window.__jumping = false;
+}
+function jumpTo(to){
+  const from = (currentRouteKey === 'tashimo') ? '田下通' : currentRouteKey;
+  navStack.push({route: from, page: currentPage});
+  window.__arrivalFrom = from;
+  openRoute(to, null);
+}
+function goBackRoute(){
+  const prev = navStack.pop();
+  if(!prev) return;
+  window.__arrivalFrom = null;
+  openRoute(prev.route, prev.page);
+}
+function updateBackChip(){
+  const chip = document.getElementById('backChip');
+  if(!navStack.length){ chip.style.display = 'none'; return; }
+  const prev = navStack[navStack.length - 1];
+  chip.style.display = 'block';
+  chip.firstElementChild.textContent = '← ' + prev.route + 'に戻る（' + (prev.page + 1) + '枚目）';
+}
+function renderLinks(p){
+  const wrap = document.getElementById('mapWrap');
+  wrap.querySelectorAll('.rlink').forEach(function(e){ e.remove(); });
+  (p.links || []).forEach(function(l){
+    const exists = (l.to === '田下通') || !!EXTRA_ROUTES[l.to];
+    const el = document.createElement('div');
+    el.className = 'rlink' + (exists ? '' : ' off');
+    el.style.left = l.x + '%'; el.style.top = l.y + '%';
+    el.innerHTML = '➜<span class="rl-tip">' + l.to + (exists ? 'に進む' : '（図面データ準備中）') + '</span>';
+    if(exists){
+      el.addEventListener('click', function(ev){ ev.stopPropagation(); jumpTo(l.to); });
+      el.addEventListener('mousedown', function(ev){ ev.stopPropagation(); });
+      if(window.__arrivalFrom && l.to === window.__arrivalFrom){ el.classList.add('pulse'); }
+    }
+    wrap.appendChild(el);
+  });
+  window.__arrivalFrom = null;   // 到着直後だけ「元の路線へ戻る矢印」を光らせる
+}
+
 function doSearch(){
+  if(!window.__jumping){ navStack = []; window.__arrivalFrom = null; window.__forcePage = null; }
+  const forcePage = window.__forcePage; window.__forcePage = null;
   const q = document.getElementById('q').value.trim();
   const empty = document.getElementById('empty');
   const result = document.getElementById('result');
@@ -486,7 +563,7 @@ function doSearch(){
     currentPages = PAGES;
     CROP_LEFT_IN = 9.333; CROP_WIDTH_IN = 35.637; PAGE_HEIGHT_IN = 17.3194;
     FORWARD_DIRS = ["→", "→", "→"];
-    currentPage = 0;
+    currentPage = (forcePage != null) ? forcePage : 0;
     renderPage();
     return;
   }
@@ -520,7 +597,7 @@ function doSearch(){
       currentRouteKey = matchKey;
       currentPages = EXTRA_ROUTES[matchKey].pages;
       FORWARD_DIRS = new Array(currentPages.length - 1).fill('→');
-      currentPage = 0;
+      currentPage = (forcePage != null) ? forcePage : (window.__arrivalFrom ? arrivalPage(matchKey, window.__arrivalFrom) : 0);
       renderPage();
     });
     return;
@@ -557,6 +634,8 @@ function renderPage(){
   }
 
   document.getElementById('mapimg').src = p.img;
+  renderLinks(isTashimo ? {} : p);
+  updateBackChip();
   const routeLabel = isTashimo ? '田下通（6号）' : (currentRouteKey + '（' + EXTRA_ROUTES[currentRouteKey].code + '号）');
   const pageNumDisp = isTashimo ? p.num : (currentPage + 1);
   document.getElementById('capTitle').textContent = '町道　' + routeLabel + '　道路台帳平面図　' + pageNumDisp + '/' + currentPages.length + '号';
